@@ -2676,7 +2676,115 @@
 
 })();
 </script>
+<script>
+/* ===== CANVAS RESPONSIVE FIX (paste before </body>) ===== */
+(function () {
+  const canvas =
+    document.getElementById("game") ||
+    document.querySelector("canvas");
+
+  if (!canvas) return;
+
+  // 1) Add responsive CSS
+  const style = document.createElement("style");
+  style.textContent = `
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      overscroll-behavior: none;
+    }
+
+    /* wrapper full screen */
+    .game-wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* leave space for mobile controls (updated via JS) */
+      padding-bottom: var(--ctrlPad, 0px);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      padding-top: env(safe-area-inset-top);
+      box-sizing: border-box;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      touch-action: none;
+    }
+
+    /* If you want "full-bleed" (cover) instead of "contain", switch JS mode below */
+  `;
+  document.head.appendChild(style);
+
+  // 2) Wrap canvas (without editing original HTML)
+  let wrap = document.querySelector(".game-wrap");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.className = "game-wrap";
+    document.body.appendChild(wrap);
+    // move canvas into wrapper
+    wrap.appendChild(canvas);
+  }
+
+  // 3) Responsive scaler (default = CONTAIN, keep aspect ratio, no stretch)
+  function updateCtrlPadding() {
+    const mctrl = document.querySelector(".mctrl");
+    if (!mctrl) {
+      document.documentElement.style.setProperty("--ctrlPad", "0px");
+      return 0;
+    }
+    // measure control bar total vertical footprint
+    const rect = mctrl.getBoundingClientRect();
+    const pad = Math.ceil(rect.height + 16); // 16px buffer
+    document.documentElement.style.setProperty("--ctrlPad", pad + "px");
+    return pad;
+  }
+
+  function resizeCanvas() {
+    const ctrlPad = updateCtrlPadding();
+
+    // Base resolution = current canvas internal resolution (no need to change game code)
+    const baseW = canvas.width || 1280;
+    const baseH = canvas.height || 720;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight - ctrlPad;
+
+    // CONTAIN scale (no crop)
+    const scale = Math.min(vw / baseW, vh / baseH);
+
+    const cssW = Math.floor(baseW * scale);
+    const cssH = Math.floor(baseH * scale);
+
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+  }
+
+  // 4) Run now + on resize/orientation
+  let t = null;
+  function scheduleResize() {
+    clearTimeout(t);
+    t = setTimeout(resizeCanvas, 50);
+  }
+
+  window.addEventListener("resize", scheduleResize, { passive: true });
+  window.addEventListener("orientationchange", scheduleResize, { passive: true });
+
+  // If your page loads fonts/images late, run a couple extra times
+  resizeCanvas();
+  setTimeout(resizeCanvas, 200);
+  setTimeout(resizeCanvas, 800);
+})();
+</script>
 
 </body>
 </html>
+
 
