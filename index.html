@@ -2519,5 +2519,164 @@
 
 })();
 </script>
+  <script>
+/* ===== MOBILE UPGRADE INJECTOR (paste before </body>) ===== */
+(function () {
+  // Find your game canvas (auto)
+  const canvas =
+    document.getElementById("game") ||
+    document.querySelector("canvas") ||
+    null;
+
+  if (!canvas) return;
+
+  // 1) Inject CSS (mobile buttons + safe area)
+  const style = document.createElement("style");
+  style.textContent = `
+    /* prevent scrolling / zooming while playing */
+    html, body {
+      overscroll-behavior: none;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    /* show buttons only on touch devices */
+    .mctrl {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      padding: 0 calc(14px + env(safe-area-inset-left)) 0 calc(14px + env(safe-area-inset-right));
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 999999;
+      pointer-events: none;
+    }
+    .mctrl .col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+      pointer-events: none;
+    }
+    .mctrl button {
+      pointer-events: auto;
+      width: min(210px, 46vw);
+      padding: 14px 14px;
+      border-radius: 18px;
+      font-size: 16px;
+      font-weight: 900;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(12,16,26,.62);
+      color: rgba(242,246,255,.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      transform: translateZ(0);
+      touch-action: manipulation;
+    }
+    .mctrl button:active { transform: translateY(1px) scale(.99); }
+
+    .mctrl .attack {
+      width: min(240px, 50vw);
+      border-color: rgba(255,77,109,.55);
+      background: linear-gradient(180deg, rgba(255,77,109,.22), rgba(255,77,109,.10));
+    }
+    .mctrl .jump   { border-color: rgba(106,230,255,.55); }
+    .mctrl .slide  { border-color: rgba(255,210,90,.50); }
+
+    /* hide on non-touch / desktop pointer */
+    @media (pointer:fine) {
+      .mctrl { display:none !important; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 2) Create HTML controls (LEFT: Attack, RIGHT: Jump+Slide)
+  const wrap = document.createElement("div");
+  wrap.className = "mctrl";
+  wrap.innerHTML = `
+    <div class="col">
+      <button class="attack" id="mAttack">⚔ Attack</button>
+    </div>
+    <div class="col">
+      <button class="jump" id="mJump">⬆ Jump</button>
+      <button class="slide" id="mSlide">⬇ Slide</button>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  const mAttack = document.getElementById("mAttack");
+  const mJump   = document.getElementById("mJump");
+  const mSlide  = document.getElementById("mSlide");
+
+  // 3) Helper: dispatch keydown (works with most existing games)
+  function FIRE(code, key) {
+    const e = new KeyboardEvent("keydown", {
+      code,
+      key,
+      bubbles: true,
+      cancelable: true
+    });
+    window.dispatchEvent(e);
+    document.dispatchEvent(e);
+    canvas.dispatchEvent(e);
+  }
+
+  function vibe(ms=10){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(_){} }
+
+  // 4) Bind buttons -> common keys:
+  // Jump: ArrowUp + Space (some games use Space)
+  // Slide: ArrowDown
+  // Attack: KeyF (common) — change if your game uses another key
+  mJump.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    vibe(8);
+    FIRE("ArrowUp", "ArrowUp");
+    FIRE("Space", " ");
+  }, { passive:false });
+
+  mSlide.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    vibe(8);
+    FIRE("ArrowDown", "ArrowDown");
+  }, { passive:false });
+
+  mAttack.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    vibe(10);
+    FIRE("KeyF", "f");
+  }, { passive:false });
+
+  // 5) Double-tap on canvas => Attack
+  let lastTap = 0;
+  let lastXY = {x:0,y:0};
+  function near(a,b){ return Math.hypot(a.x-b.x, a.y-b.y) < 28; }
+
+  canvas.addEventListener("pointerdown", (ev) => {
+    // Only for touch pointers
+    if (ev.pointerType === "mouse") return;
+    const rect = canvas.getBoundingClientRect();
+    const p = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+    const now = performance.now();
+    if (now - lastTap < 280 && near(p, lastXY)) {
+      vibe(12);
+      FIRE("KeyF", "f");
+      lastTap = 0;
+      return;
+    }
+    lastTap = now;
+    lastXY = p;
+  }, { passive:true });
+
+  // 6) Make canvas resistant to page scrolling on iOS
+  canvas.style.touchAction = "none";
+
+})();
+</script>
+
 </body>
 </html>
+
